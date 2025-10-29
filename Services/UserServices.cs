@@ -16,10 +16,10 @@ public class UserService {
     }
 
     public async Task<User?> GetByUsernameAsync(string username) 
-    { 
-       => await _context.Users
-            .FirstOrDefaultAsync(user => user.Username == username);.
-    }
+     
+        => await _context.Users
+            .FirstOrDefaultAsync(user => user.Username == username);
+    
 
     public async Task<User> CreateAsync(string username, string password) 
     {
