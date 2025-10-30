@@ -19,11 +19,17 @@ public class UserService {
      
         => await _context.Users
             .FirstOrDefaultAsync(user => user.Username == username);
-    
 
-    public async Task<User> CreateAsync(string username, string password) 
+
+    public async Task<User?> GetByEmailAsync(string email) 
+     
+        => await _context.Users
+            .FirstOrDefaultAsync(user => user.Email == email);
+
+
+    public async Task<User> CreateAsync(string username, string email, string password) 
     {
-        var user = new User { Username = username };
+        var user = new User { Username = username, Email = email };
         user.PasswordHash = _hasher.HashPassword(user, password);
         _context.Users.Add(user);
         await _context.SaveChangesAsync();

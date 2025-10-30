@@ -7,6 +7,7 @@ using JwtAuth.Services;
 using JwtAuth.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.Net.Mail;
 
 namespace JwtAuth.Controllers;
 
@@ -26,23 +27,41 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] AuthRequest req)
     {
-        var existing = await _users.GetByUsernameAsync(req.Username);
-        if (existing != null)
+        if (string.IsNullOrWhiteSpace(req.Username) ||
+        string.IsNullOrWhiteSpace(req.Email) ||
+        string.IsNullOrWhiteSpace(req.Password))
         {
-            return BadRequest("Usuário já existe.");
+            return BadRequest("Todos os campos são obrigatórios.");
         }
 
-        var user = await _users.CreateAsync(req.Username, req.Password);
-        return Ok(new { user.Id, user.Username });
+        var email = req.Email.ToLowerInvariant().Trim();
+
+        try
+        {
+            var _ = new MailAddress(email);
+        }
+        catch
+        {
+            return BadRequest("Email inválido.");
+        }
+
+        var existingEmail = await _users.GetByEmailAsync(email);
+        if (existingEmail != null)
+        {
+            return BadRequest("Email já cadastrado.");
+        }
+
+            var user = await _users.CreateAsync(req.Username, email, req.Password);
+            return Ok(new { user.Id, user.Username });
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] AuthRequest req)
     {
-        var user = await _users.GetByUsernameAsync(req.Username);
+        var user = await _users.GetByEmailAsync(req.Email);
         if (user == null || !_users.CheckPassword(user, req.Password))
         {
-            return Unauthorized("Usuário ou senha inválidos.");
+            return Unauthorized("Email ou senha inválidos.");
         }
 
         var jwt = _config.GetSection("Jwt");
@@ -54,7 +73,7 @@ public class AuthController : ControllerBase
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
+            new Claim(JwtRegisteredClaimNames.UniqueName, user.Email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
