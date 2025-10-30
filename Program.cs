@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using System.IO;
 using JwtAuth.Data;
 using JwtAuth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,31 +13,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Resolve connection string and make sure SQLite file path is absolute
-var configuredConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=usuarios.db";
-string sqliteConn;
-if (configuredConn.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
-{
-    var source = configuredConn.Substring("Data Source=".Length).Trim();
-    if (!Path.IsPathRooted(source))
-    {
-        // Put the DB file in the current working directory (output folder)
-        var fullPath = Path.Combine(Directory.GetCurrentDirectory(), source);
-        sqliteConn = $"Data Source={fullPath}";
-    }
-    else
-    {
-        sqliteConn = configuredConn;
-    }
-}
-else
-{
-    sqliteConn = configuredConn;
-}
+// ---------------------------
+// Configuração do MySQL
+// ---------------------------
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                       ?? "Server=localhost;Database=JwtAuthDB;User=root;Password=Unusualfpss#;";
 
-// Banco SQLite
+var serverVersion = new MySqlServerVersion(new Version(8, 0, 39)); // ajuste para a versão do seu MySQL
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(sqliteConn));
+{
+    options.UseMySql(connectionString, serverVersion)
+           .LogTo(Console.WriteLine, LogLevel.Information); // log SQL para debug
+});
 
 // Serviço de usuários
 builder.Services.AddScoped<UserService>();
@@ -75,7 +62,7 @@ app.UseHttpsRedirection();
 
 app.UseCors(policy =>
     policy
-        .WithOrigins("https://jwt-auth-frontend-navy.vercel.app") 
+        .WithOrigins("https://jwt-auth-frontend-navy.vercel.app")
         .AllowAnyHeader()
         .AllowAnyMethod()
 );
@@ -85,23 +72,24 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Cria o banco automaticamente (somente em desenvolvimento)
+// ---------------------------
+// Cria o banco MySQL automaticamente
+// ---------------------------
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Configured connection string: {Conn}", configuredConn);
-    logger.LogInformation("Effective SQLite connection: {Conn}", sqliteConn);
-    logger.LogInformation("CurrentDirectory: {Dir}", Directory.GetCurrentDirectory());
+    logger.LogInformation("MySQL connection string: {Conn}", connectionString);
 
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        db.Database.EnsureCreated();
-        logger.LogInformation("Database ensured/created successfully.");
+        // Cria o banco e aplica migrations se não existir
+        db.Database.Migrate();
+        logger.LogInformation("Database migrated/created successfully.");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Falha ao criar o banco de dados SQLite.");
+        logger.LogError(ex, "Falha ao criar ou migrar o banco de dados MySQL.");
         throw;
     }
 }

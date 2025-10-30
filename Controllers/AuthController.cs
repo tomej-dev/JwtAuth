@@ -51,8 +51,18 @@ public class AuthController : ControllerBase
             return BadRequest("Email já cadastrado.");
         }
 
-            var user = await _users.CreateAsync(req.Username, email, req.Password);
-            return Ok(new { user.Id, user.Username });
+        
+
+        var user = await _users.CreateAsync(req.Username, email, req.Password);
+        var emailService = new EmailService();
+        await emailService.SendEmailAsync(
+            user.Email,
+            "Bem-vindo!",
+            $"<h1>Olá, {user.Username}</h1><p>Seu cadastro foi realizado com sucesso!</p>"
+        );
+        return Ok(new { user.Id, user.Username });
+
+        
     }
 
     [HttpPost("login")]
