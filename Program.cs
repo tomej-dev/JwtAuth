@@ -29,6 +29,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Serviço de usuários
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<EmailService>();
 
 // Configuração JWT
 var jwt = builder.Configuration.GetSection("Jwt");
@@ -60,9 +61,15 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
+var allowedOrigins = new[]
+{
+    "https://jwt-auth-frontend-navy.vercel.app/", // produção (Vercel)
+    "http://localhost:5173"                      // desenvolvimento local (Vite)
+};
+
 app.UseCors(policy =>
     policy
-        .WithOrigins("https://jwt-auth-frontend-navy.vercel.app")
+        .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()
 );

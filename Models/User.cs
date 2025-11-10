@@ -6,4 +6,7 @@ public class User
     public string Username { get; set; } = null!;
     public string Email { get; set; } = null!;  
     public string PasswordHash { get; set; } = null!;
+    public Boolean IsEmailConfirmed { get; set; } = false;
+    public string? EmailConfirmationToken { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
